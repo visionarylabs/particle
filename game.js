@@ -53,7 +53,7 @@ var toolsObject = function(){
 
 var tools = new toolsObject();
 
-var makeParticle = function(type,x,y){
+var makeParticle = function(type,x,y,size){
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
  
@@ -64,8 +64,8 @@ var makeParticle = function(type,x,y){
         dist : null,
         velx : Math.cos(Math.PI * direction / 180) * thisSpeed,
         vely : Math.sin(Math.PI * direction / 180) * thisSpeed,
-        width : 10,
-        height : 10,
+        width : size,
+        height : size,
         color : "rgb(200,200,100)",
         createTime : time.now,
         destroy : false,
@@ -88,17 +88,19 @@ var init = function(){
 // Check inputs for how to update sprites
 var update = function (modifier) {
 
-
+    var max = 8;
+    var min = 1;
+    var add = 0; 
+    var size = (Math.floor(Math.random() * (max - min + 1) ) + min) + Number(add);
+    
     //check rate and last made particle
     //to see if we should make a new one
     if( state.lastParticle < time.now - (config.rateOfParticles) ){
         //two sample emiters
         //sprites.particles.push( makeParticle(null,state.pos.x,state.pos.y) );
-        sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
+        sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2,size) );
         state.lastParticle = time.now;
     }
-
-
 
     //update the velocity and position of each particle
     var i;
@@ -178,8 +180,11 @@ var showSprites = function(){
         p = sprites.particles[i];
         //set color
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.width, p.height);
-    }    
+        //ctx.fillRect(p.x, p.y, p.width, p.height);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.width, 0, 2 * Math.PI,false);
+        ctx.fill();
+    }
 };
 
 // game ui
