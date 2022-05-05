@@ -9,6 +9,8 @@ var w = window;
 // Cross-browser support for requestAnimationFrame
 var requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
 
+var tools = {};
+
 // game timing vars
 var time = {
     start : performance.now(),
@@ -38,25 +40,24 @@ var state = {
     pos : {},
 }
 
-var toolsObject = function(){
-    var getMousePos = function (canvas,e) {
-        var rect = canvas.getBoundingClientRect();
-        return {
-            x: Math.floor(e.clientX - rect.left),
-            y: Math.floor(e.clientY - rect.top)
-        };
-    }
-    return {
-        getMousePos : getMousePos
-    }
-}
+//start the game
+var init = function(){
+    canvas.width = 800;
+    canvas.height = 600;
+    canvas.id = 'game-canvas';
+    canvas.onselectstart = function () { return false; } //stop text select on double click
+    canvas.addEventListener('mousemove', function(e) {
+        state.pos = tools.getMousePos(canvas,e);
+    });
+    tools = new toolsObject();
+    mainLoop();
+};
 
-var tools = new toolsObject();
-
-var makeParticle = function(type,x,y,size){
+var makeParticle = function(type,x,y){
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
- 
+    var size = tools.randomRange(1,8);
+
     var particle = {
         type : type,
         x : x,
@@ -73,32 +74,15 @@ var makeParticle = function(type,x,y,size){
     return particle;
 };
 
-//start the game
-var init = function(){
-    canvas.width = 800;
-    canvas.height = 600;
-    canvas.id = 'game-canvas';
-    canvas.onselectstart = function () { return false; } //stop text select on double click
-    canvas.addEventListener('mousemove', function(e) {
-        state.pos = tools.getMousePos(canvas,e);
-    });
-    mainLoop();
-};
-
 // Check inputs for how to update sprites
 var update = function (modifier) {
-
-    var max = 8;
-    var min = 1;
-    var add = 0; 
-    var size = (Math.floor(Math.random() * (max - min + 1) ) + min) + Number(add);
     
     //check rate and last made particle
     //to see if we should make a new one
     if( state.lastParticle < time.now - (config.rateOfParticles) ){
         //two sample emiters
         //sprites.particles.push( makeParticle(null,state.pos.x,state.pos.y) );
-        sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2,size) );
+        sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
         state.lastParticle = time.now;
     }
 
@@ -132,7 +116,7 @@ var update = function (modifier) {
 
         if(opacity <= .01){
             opacity = 0;
-            p.destory = true;
+            p.destroy = true;
         }
 
         //change color if in mouse gravity
@@ -151,13 +135,13 @@ var update = function (modifier) {
         p.x += p.velx * modifier;
         p.y += p.vely * modifier;
 
-        //destory particles off the edge
+        //destroy particles off the edge
         if(p.y < 0 || p.x < 0 || p.x > canvas.width || p.y > canvas.height){
-            p.destory = true;
+            p.destroy = true;
         }
 
-        //if destory is set remove it from the list
-        if(p.destory == true){
+        //if destroy is set remove it from the list
+        if(p.destroy == true){
             sprites.particles.splice(i,1);
         }
 
@@ -224,6 +208,24 @@ var mainLoop = function () {
     // Request to do this again ASAP
     requestAnimationFrame(mainLoop);
 };
+
+var toolsObject = function(){
+    var getMousePos = function (canvas,e) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            x: Math.floor(e.clientX - rect.left),
+            y: Math.floor(e.clientY - rect.top)
+        };
+    }
+    var randomRange = function (min,max){ 
+        return (Math.floor(Math.random() * (max - min + 1) ) + min);
+    }
+
+    return {
+        getMousePos : getMousePos,
+        randomRange : randomRange
+    }
+}
 
 // Let's play this game!
 init();
