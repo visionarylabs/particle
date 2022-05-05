@@ -104,28 +104,37 @@ var update = function (modifier) {
     var i;
     var p = null;
     var opacity = 1;
-    var decayRange = 10000;
+    var mouseGravityRange = 100;
+    var decayStart = 1 * 1000; //s * ms
+    var decayEnd = 5 * 1000; //s * ms
+    
     for(i = sprites.particles.length - 1; i >= 0; i--){
         p = sprites.particles[i];
         p.vely += config.gravity * modifier;
 
         p.dist = Math.sqrt( Math.pow( (state.pos.x - p.x),2) + Math.pow( (state.pos.y - p.y),2) );
 
-        if(p.dist < 100 ){
-            p.velx += (100 - p.dist) * (state.pos.x - p.x) * modifier * .9;
-            p.vely += (100 - p.dist) * (state.pos.y - p.y) * modifier * .9;
+        if(p.dist < mouseGravityRange ){
+            p.velx += (mouseGravityRange - p.dist) * (state.pos.x - p.x) * modifier * .9;
+            p.vely += (mouseGravityRange - p.dist) * (state.pos.y - p.y) * modifier * .9;
         }
 
         //opacity = (200-p.dist)/200;
-        if( Math.abs(p.createTime - time.now) > decayRange ){
-            opacity = .5;
-        }
-        if( Math.abs(p.createTime - time.now) > decayRange * 2 ){
-            opacity = 0;
-            p.destroy = true;
+        opacity = Math.abs(p.createTime - time.now) / (decayEnd - decayStart);
+
+        if(opacity > 1){
+            opacity = 1;
+        }else{
+            opacity = 1 - opacity;
         }
 
-        if(p.dist < 100){
+        if(opacity <= .01){
+            opacity = 0;
+            p.destory = true;
+        }
+
+        //change color if in mouse gravity
+        if(p.dist < mouseGravityRange){
             p.color = "rgba(200,100,100,"+ opacity +")";
         }else{
             p.color = "rgba(200,200,100,"+ opacity +")";
@@ -140,10 +149,12 @@ var update = function (modifier) {
         p.x += p.velx * modifier;
         p.y += p.vely * modifier;
 
+        //destory particles off the edge
         if(p.y < 0 || p.x < 0 || p.x > canvas.width || p.y > canvas.height){
             p.destory = true;
         }
 
+        //if destory is set remove it from the list
         if(p.destory == true){
             sprites.particles.splice(i,1);
         }
