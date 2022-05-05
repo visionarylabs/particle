@@ -67,6 +67,7 @@ var makeParticle = function(type,x,y){
         width : 10,
         height : 10,
         color : "rgb(200,200,100)",
+        createTime : time.now,
         destroy : false,
     }
     return particle;
@@ -91,11 +92,9 @@ var update = function (modifier) {
     //check rate and last made particle
     //to see if we should make a new one
     if( state.lastParticle < time.now - (config.rateOfParticles) ){
-
         //two sample emiters
         //sprites.particles.push( makeParticle(null,state.pos.x,state.pos.y) );
         sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
-
         state.lastParticle = time.now;
     }
 
@@ -104,6 +103,8 @@ var update = function (modifier) {
     //update the velocity and position of each particle
     var i;
     var p = null;
+    var opacity = 1;
+    var decayRange = 10000;
     for(i = sprites.particles.length - 1; i >= 0; i--){
         p = sprites.particles[i];
         p.vely += config.gravity * modifier;
@@ -115,12 +116,22 @@ var update = function (modifier) {
             p.vely += (100 - p.dist) * (state.pos.y - p.y) * modifier * .9;
         }
 
-        if(p.dist < 100){
-            p.color = "rgba(200,100,100,"+(200-p.dist)/200+")";
-        }else{
-            p.color = "rgba(200,200,100,"+(200-p.dist)/200+")";
+        //opacity = (200-p.dist)/200;
+        if( Math.abs(p.createTime - time.now) > decayRange ){
+            opacity = .5;
+        }
+        if( Math.abs(p.createTime - time.now) > decayRange * 2 ){
+            opacity = 0;
+            p.destroy = true;
         }
 
+        if(p.dist < 100){
+            p.color = "rgba(200,100,100,"+ opacity +")";
+        }else{
+            p.color = "rgba(200,200,100,"+ opacity +")";
+        }
+
+        //change color for slow particles
         //if( ( Math.abs(p.velx) + Math.abs(p.vely) ) < 50){
         //    p.color = "rgb(100,100,200)";
         //}
@@ -128,6 +139,15 @@ var update = function (modifier) {
         //position the particle
         p.x += p.velx * modifier;
         p.y += p.vely * modifier;
+
+        if(p.y < 0 || p.x < 0 || p.x > canvas.width || p.y > canvas.height){
+            p.destory = true;
+        }
+
+        if(p.destory == true){
+            sprites.particles.splice(i,1);
+        }
+
     }
 
 };
