@@ -10,7 +10,6 @@ var w = window;
 var requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
 
 var tools = {};
-var emiterFactory = {};
 
 // game timing vars
 var time = {
@@ -29,10 +28,27 @@ var config = {
     gravity : 96,
     particleDirection : 0,
     particleRange : 360,
-    rateOfParticles : 10, //rate of spawn per ms
     airWeight : 1,
     mouseGravityRange : 100,
     mouseGravity : .5,
+    emiterDefault : {
+        x : 0,
+        y : 0,
+        velx : 20,
+        vely : 20,
+        rateOfParticles : 10,
+        lastParticle : 0,
+        createTime : 0,
+        destroy : false,
+    },
+    particleDefault : {
+        r : 200,
+        g : 100,
+        b : 200,
+        opacity : .5,
+        decayStart : 10 * 1000, //s * ms
+        decayEnd : 600 * 1000, //s * ms
+    }
 }
 
 var sprites = {
@@ -45,10 +61,9 @@ var state = {
     lowestFps : 1000,
 }
 
-
-
 //start the game
 var init = function(){
+
     canvas.width = 800;
     canvas.height = 600;
     canvas.id = 'game-canvas';
@@ -56,67 +71,67 @@ var init = function(){
     canvas.addEventListener('mousemove', function(e) {
         state.mousePos = tools.getMousePos(canvas,e);
     });
+
     tools = new toolsObject();
+    sprites.emiters.push(makeEmiter(1,canvas.width/2,canvas.height/2));
+    sprites.emiters.push(makeEmiter(2,canvas.width/4,canvas.height/4));
 
-    e = new emiterFactory();
-    var em = e.makeEmiter(1,canvas.width/2,canvas.height/2);
-    sprites.emiters.push(em);
-
-    var em2 = e.makeEmiter(2,canvas.width/4,canvas.height/4);
-    sprites.emiters.push(em2);
-
-    //console.log(sprites.emiters[0]);
     mainLoop();
 };
 
-var emiterFactory = function(){
+var makeEmiter = function(type,x,y){
 
-    var makeEmiter = function(type,x,y){
+    var type = type;
 
-        var em = {
-            type : type,
-            x : x,
-            y : y,
-            velx : 100,
-            vely : 0,
-            lastParticle : 0,
-            createTime : time.now,
-            destroy : false,
-        }
+    var emiterConfig = {};
+    var particleConfig = {};
 
-        var par = {
-            r : 200,
-            g : 100,
-            b : 200,
-            opacity : .5,
-            decayStart : 540 * 1000, //s * ms
-            decayEnd : 600 * 1000, //s * ms
-        }
-
-        if(type == 2){
-            par.r = 0;
-        }
-
-        var addParticle = function(){
-            if( em.lastParticle < time.now - (config.rateOfParticles) ){
-                sprites.particles.push( makeParticle(em.type,em.x,em.y,par) );
-                em.lastParticle = time.now;
-            }
-        }
-
-        return{
-            em : em, //emiter settings
-            addParticle : addParticle,
-        }
-
+    emiterConfig = {
+        x : 0,
+        y : 0,
+        velx : 20,
+        vely : 20,
+        rateOfParticles : 10,
+        lastParticle : 0,
+        createTime : 0,
+        destroy : false,
+    },
+    particleConfig = {
+        r : 200,
+        g : 100,
+        b : 200,
+        opacity : .5,
+        decayStart : 10 * 1000, //s * ms
+        decayEnd : 600 * 1000, //s * ms
     }
-    return {
-        makeEmiter : makeEmiter
+
+    emiterConfig.x = x;
+    emiterConfig.y = y;
+    emiterConfig.createTime = time.now;
+
+    if(type == 2){
+        emiterConfig.vely = -250;
+        emiterConfig.velx = -250;
+        emiterConfig.rateOfParticles = 20;
+        particleConfig.r = 0;
     }
-};
+
+    var addParticle = function(){
+        if( emiterConfig.lastParticle < time.now - (emiterConfig.rateOfParticles) ){
+            sprites.particles.push( makeParticle(type,emiterConfig.x,emiterConfig.y,particleConfig) );
+            emiterConfig.lastParticle = time.now;
+        }
+    }
+
+    return{
+        type : type,
+        emiterConfig : emiterConfig, //emiter settings
+        addParticle : addParticle,
+    }
+}
 
 
-var makeParticle = function(type,x,y,par){
+var makeParticle = function(type,x,y,pconfig){
 
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
@@ -135,12 +150,12 @@ var makeParticle = function(type,x,y,par){
         width : size,
         height : size,
         color : "",
-        r : par.r,
-        g : par.g,
-        b : par.b,
-        opacity : par.opacity,
-        decayStart : par.decayStart,
-        decayEnd : par.decayEnd,
+        r : pconfig.r,
+        g : pconfig.g,
+        b : pconfig.b,
+        opacity : pconfig.opacity,
+        decayStart : pconfig.decayStart,
+        decayEnd : pconfig.decayEnd,
         createTime : time.now,
         destroy : false,
     }
@@ -163,11 +178,14 @@ var update = function (modifier) {
         e = sprites.emiters[i];
         e.addParticle();
 
-        e.em.x += e.em.velx * modifier;
-        e.em.y += e.em.vely * modifier;
+        e.emiterConfig.x += e.emiterConfig.velx * modifier;
+        e.emiterConfig.y += e.emiterConfig.vely * modifier;
 
-        if(e.em.x > canvas.width || e.em.x < 0){
-            e.em.velx = e.em.velx * -1;
+        if(e.emiterConfig.x > canvas.width || e.emiterConfig.x < 0){
+            e.emiterConfig.velx = e.emiterConfig.velx * -1;
+        }
+        if(e.emiterConfig.y > canvas.height || e.emiterConfig.y < 0){
+            e.emiterConfig.vely = e.emiterConfig.vely * -1;
         }
 
     }
@@ -191,7 +209,6 @@ var update = function (modifier) {
             p.vely += (config.mouseGravityRange - p.mouseDistance) * (state.mousePos.y - p.y) * modifier * config.mouseGravity;
         }
 
-        //OPACITY
         //opacity = (200-p.mouseDistance)/200;
         opacity = Math.abs(p.createTime - time.now) / (p.decayEnd - p.decayStart);
         r = 300 - p.mouseDistance;
@@ -279,7 +296,7 @@ var showText = function(){
     ctx.fillText('fps: ' + Math.ceil(1000/time.delta), 10, 56);
     ctx.fillText('lowest fps: ' + state.lowestFps, 10, 76);
     ctx.fillText('particles: ' + Math.ceil(sprites.particles.length), 10, 96);
-    ctx.fillText('pps: ' + Math.ceil(1000/config.rateOfParticles), 10, 116);
+    //ctx.fillText('pps: ' + Math.ceil(1000/config.rateOfParticles), 10, 116);
     ctx.fillText('s: ' + Math.ceil(time.current), 10, 136);
 };
 
