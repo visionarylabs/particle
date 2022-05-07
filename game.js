@@ -31,6 +31,8 @@ var config = {
     particleRange : 360,
     rateOfParticles : 10, //rate of spawn per ms
     airWeight : 1,
+    mouseGravityRange : 100,
+    mouseGravity : .5,
 }
 
 var sprites = {
@@ -39,8 +41,8 @@ var sprites = {
 };
 
 var state = {
-    lastParticle : 0,
-    pos : {},
+    mousePos : {},
+    lowestFps : 1000,
 }
 
 
@@ -52,31 +54,26 @@ var init = function(){
     canvas.id = 'game-canvas';
     canvas.onselectstart = function () { return false; } //stop text select on double click
     canvas.addEventListener('mousemove', function(e) {
-        state.pos = tools.getMousePos(canvas,e);
+        state.mousePos = tools.getMousePos(canvas,e);
     });
     tools = new toolsObject();
 
     e = new emiterFactory();
-    var em = e.makeEmiter(null,canvas.width/2,canvas.height/2);
+    var em = e.makeEmiter(1,canvas.width/2,canvas.height/2);
     sprites.emiters.push(em);
 
-    var em2 = e.makeEmiter(null,canvas.width/4,canvas.height/4);
+    var em2 = e.makeEmiter(2,canvas.width/4,canvas.height/4);
     sprites.emiters.push(em2);
 
     //console.log(sprites.emiters[0]);
     mainLoop();
 };
 
-var getDistance = function(x,y){
-    var dist = Math.sqrt( Math.pow(x,2) + Math.pow(y,2) );
-    return dist;
-};
-
 var emiterFactory = function(){
 
     var makeEmiter = function(type,x,y){
 
-        var prop = {
+        var em = {
             type : type,
             x : x,
             y : y,
@@ -87,16 +84,31 @@ var emiterFactory = function(){
             destroy : false,
         }
 
+        var par = {
+            r : 200,
+            g : 100,
+            b : 200,
+            opacity : .5,
+            decayStart : 540 * 1000, //s * ms
+            decayEnd : 600 * 1000, //s * ms
+        }
+
+        if(type == 2){
+            par.r = 0;
+        }
+
         var addParticle = function(){
-            if( prop.lastParticle < time.now - (config.rateOfParticles) ){
-                sprites.particles.push( makeParticle(prop.type,prop.x,prop.y) );
-                prop.lastParticle = time.now;
+            if( em.lastParticle < time.now - (config.rateOfParticles) ){
+                sprites.particles.push( makeParticle(em.type,em.x,em.y,par) );
+                em.lastParticle = time.now;
             }
         }
+
         return{
-            prop : prop,
+            em : em, //emiter settings
             addParticle : addParticle,
         }
+
     }
     return {
         makeEmiter : makeEmiter
@@ -104,7 +116,8 @@ var emiterFactory = function(){
 };
 
 
-var makeParticle = function(type,x,y){
+var makeParticle = function(type,x,y,par){
+
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
     var size = tools.randomRange(1,8);
@@ -121,68 +134,69 @@ var makeParticle = function(type,x,y){
         vely : Math.sin(Math.PI * direction / 180) * thisSpeed,
         width : size,
         height : size,
-        color : "rgb(200,200,100)",
+        color : "",
+        r : par.r,
+        g : par.g,
+        b : par.b,
+        opacity : par.opacity,
+        decayStart : par.decayStart,
+        decayEnd : par.decayEnd,
         createTime : time.now,
         destroy : false,
     }
+
     return particle;
+
 };
 
 // Check inputs for how to update sprites
 var update = function (modifier) {
-    
-    //check rate and last made particle
-    //to see if we should make a new one
-    //if( state.lastParticle < time.now - (config.rateOfParticles) ){
-        //two sample emiters
-        //sprites.particles.push( makeParticle(null,state.pos.x,state.pos.y) );
-        //sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
-        //state.lastParticle = time.now;
-    //}
 
     var i;
-    var e = null;
 
     //EMITER LOOP
+    //each emiter tries to create a particle
+    //update velocity of each emiter
+    var e;
     for(i = sprites.emiters.length - 1; i >= 0; i--){
+
         e = sprites.emiters[i];
         e.addParticle();
 
-        e.prop.x += e.prop.velx * modifier;
-        e.prop.y += e.prop.vely * modifier;
+        e.em.x += e.em.velx * modifier;
+        e.em.y += e.em.vely * modifier;
 
-        if(e.prop.x > canvas.width || e.prop.x < 0){
-            e.prop.velx = e.prop.velx * -1;
+        if(e.em.x > canvas.width || e.em.x < 0){
+            e.em.velx = e.em.velx * -1;
         }
 
     }
 
+    //PARTICLE LOOP
     //update the velocity and position of each particle
-
-    var p = null;
-    var opacity = 1;
-    var mouseGravityRange = 100;
-    var mouseGravity = .5;
-    var decayStart = 540 * 1000; //s * ms
-    var decayEnd = 600 * 1000; //s * ms
-    var r = 200
-    var g = 200
-    
+    var p;
+    var r,g,b,opacity;
     for(i = sprites.particles.length - 1; i >= 0; i--){
+
         p = sprites.particles[i];
+
+        //GRAVITY / BOUYANCY
         p.vely -= config.gravity * modifier * p.buoyancy;
-        
-        p.mouseDistance = getDistance(state.pos.x - p.x,state.pos.y - p.y)
-        
-        if(p.mouseDistance < mouseGravityRange ){
-            p.velx += (mouseGravityRange - p.mouseDistance) * (state.pos.x - p.x) * modifier * mouseGravity;
-            p.vely += (mouseGravityRange - p.mouseDistance) * (state.pos.y - p.y) * modifier * mouseGravity;
+
+        //MOUSE GRAVITY
+        p.mouseDistance = tools.getDistance(state.mousePos.x - p.x,state.mousePos.y - p.y)
+
+        if(p.mouseDistance < config.mouseGravityRange ){
+            p.velx += (config.mouseGravityRange - p.mouseDistance) * (state.mousePos.x - p.x) * modifier * config.mouseGravity;
+            p.vely += (config.mouseGravityRange - p.mouseDistance) * (state.mousePos.y - p.y) * modifier * config.mouseGravity;
         }
 
+        //OPACITY
         //opacity = (200-p.mouseDistance)/200;
-        opacity = Math.abs(p.createTime - time.now) / (decayEnd - decayStart);
-        r = 300 - p.mouseDistance
-        g = 100 + p.mouseDistance
+        opacity = Math.abs(p.createTime - time.now) / (p.decayEnd - p.decayStart);
+        r = 300 - p.mouseDistance;
+        g = 100 + p.mouseDistance;
+        b = 100;
 
         if(opacity > 1){
             opacity = 1;
@@ -195,11 +209,11 @@ var update = function (modifier) {
             p.destroy = true;
         }
 
+        //COLOR
+        p.color = "rgba("+ p.r +","+ p.g +","+p.b+","+ opacity +")";
         //change color if in mouse gravity
-        if(p.mouseDistance < mouseGravityRange){
-            p.color = "rgba("+ r +","+ g +",100,"+ opacity +")";
-        }else{
-            p.color = "rgba(200,200,100,"+ opacity +")";
+        if(p.mouseDistance < config.mouseGravityRange){
+            p.color = "rgba("+ p.r +","+ g +","+ p.b +","+ opacity +")";
         }
 
         //change color for slow particles
@@ -220,6 +234,11 @@ var update = function (modifier) {
         if(p.destroy == true){
             sprites.particles.splice(i,1);
         }
+
+        if(Math.ceil(1000/time.delta) < state.lowestFps){
+            state.lowestFps = Math.ceil(1000/time.delta);
+        }
+
 
     }
 
@@ -258,9 +277,10 @@ var showText = function(){
 
     //Info
     ctx.fillText('fps: ' + Math.ceil(1000/time.delta), 10, 56);
-    ctx.fillText('particles: ' + Math.ceil(sprites.particles.length), 10, 76);
-    ctx.fillText('pps: ' + Math.ceil(1000/config.rateOfParticles), 10, 96);
-    ctx.fillText('s: ' + Math.ceil(time.current), 10, 116);
+    ctx.fillText('lowest fps: ' + state.lowestFps, 10, 76);
+    ctx.fillText('particles: ' + Math.ceil(sprites.particles.length), 10, 96);
+    ctx.fillText('pps: ' + Math.ceil(1000/config.rateOfParticles), 10, 116);
+    ctx.fillText('s: ' + Math.ceil(time.current), 10, 136);
 };
 
 var processTick = function (time) {
@@ -293,12 +313,16 @@ var toolsObject = function(){
             y: Math.floor(e.clientY - rect.top)
         };
     }
+    var getDistance = function(x,y){
+        var dist = Math.sqrt( Math.pow(x,2) + Math.pow(y,2) );
+        return dist;
+    }
     var randomRange = function (min,max){ 
         return (Math.floor(Math.random() * (max - min + 1) ) + min);
     }
-
     return {
         getMousePos : getMousePos,
+        getDistance : getDistance,
         randomRange : randomRange
     }
 }
