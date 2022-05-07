@@ -10,6 +10,7 @@ var w = window;
 var requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
 
 var tools = {};
+var emiterFactory = {};
 
 // game timing vars
 var time = {
@@ -25,20 +26,24 @@ var time = {
 var config = {
     gameSpeed : 1, //multipy the delta
     speedVar : 50, //multipy the particle velocity
-    gravity : .35,
+    gravity : 96,
     particleDirection : 0,
     particleRange : 360,
-    rateOfParticles : 20, //rate of spwan per ms
+    rateOfParticles : 10, //rate of spawn per ms
+    airWeight : 1,
 }
 
 var sprites = {
-    particles : new Array()
+    particles : new Array(),
+    emiters : new Array(),
 };
 
 var state = {
     lastParticle : 0,
     pos : {},
 }
+
+
 
 //start the game
 var init = function(){
@@ -50,19 +55,68 @@ var init = function(){
         state.pos = tools.getMousePos(canvas,e);
     });
     tools = new toolsObject();
+
+    e = new emiterFactory();
+    var em = e.makeEmiter(null,canvas.width/2,canvas.height/2);
+    sprites.emiters.push(em);
+
+    var em2 = e.makeEmiter(null,canvas.width/4,canvas.height/4);
+    sprites.emiters.push(em2);
+
+    //console.log(sprites.emiters[0]);
     mainLoop();
 };
+
+var getDistance = function(x,y){
+    var dist = Math.sqrt( Math.pow(x,2) + Math.pow(y,2) );
+    return dist;
+};
+
+var emiterFactory = function(){
+
+    var makeEmiter = function(type,x,y){
+
+        var prop = {
+            type : type,
+            x : x,
+            y : y,
+            velx : 100,
+            vely : 0,
+            lastParticle : 0,
+            createTime : time.now,
+            destroy : false,
+        }
+
+        var addParticle = function(){
+            if( prop.lastParticle < time.now - (config.rateOfParticles) ){
+                sprites.particles.push( makeParticle(prop.type,prop.x,prop.y) );
+                prop.lastParticle = time.now;
+            }
+        }
+        return{
+            prop : prop,
+            addParticle : addParticle,
+        }
+    }
+    return {
+        makeEmiter : makeEmiter
+    }
+};
+
 
 var makeParticle = function(type,x,y){
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
     var size = tools.randomRange(1,8);
+    var weight = 2;
 
     var particle = {
         type : type,
         x : x,
         y : y,
-        dist : null,
+        weight : weight,
+        buoyancy : (config.airWeight - weight),
+        mouseDistance : null,
         velx : Math.cos(Math.PI * direction / 180) * thisSpeed,
         vely : Math.sin(Math.PI * direction / 180) * thisSpeed,
         width : size,
@@ -79,34 +133,56 @@ var update = function (modifier) {
     
     //check rate and last made particle
     //to see if we should make a new one
-    if( state.lastParticle < time.now - (config.rateOfParticles) ){
+    //if( state.lastParticle < time.now - (config.rateOfParticles) ){
         //two sample emiters
         //sprites.particles.push( makeParticle(null,state.pos.x,state.pos.y) );
-        sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
-        state.lastParticle = time.now;
+        //sprites.particles.push( makeParticle(null,canvas.width/2,canvas.height/2) );
+        //state.lastParticle = time.now;
+    //}
+
+    var i;
+    var e = null;
+
+    //EMITER LOOP
+    for(i = sprites.emiters.length - 1; i >= 0; i--){
+        e = sprites.emiters[i];
+        e.addParticle();
+
+        e.prop.x += e.prop.velx * modifier;
+        e.prop.y += e.prop.vely * modifier;
+
+        if(e.prop.x > canvas.width || e.prop.x < 0){
+            e.prop.velx = e.prop.velx * -1;
+        }
+
     }
 
     //update the velocity and position of each particle
-    var i;
+
     var p = null;
     var opacity = 1;
     var mouseGravityRange = 100;
-    var decayStart = 1 * 1000; //s * ms
-    var decayEnd = 5 * 1000; //s * ms
+    var mouseGravity = .5;
+    var decayStart = 540 * 1000; //s * ms
+    var decayEnd = 600 * 1000; //s * ms
+    var r = 200
+    var g = 200
     
     for(i = sprites.particles.length - 1; i >= 0; i--){
         p = sprites.particles[i];
-        p.vely += config.gravity * modifier;
-
-        p.dist = Math.sqrt( Math.pow( (state.pos.x - p.x),2) + Math.pow( (state.pos.y - p.y),2) );
-
-        if(p.dist < mouseGravityRange ){
-            p.velx += (mouseGravityRange - p.dist) * (state.pos.x - p.x) * modifier * .9;
-            p.vely += (mouseGravityRange - p.dist) * (state.pos.y - p.y) * modifier * .9;
+        p.vely -= config.gravity * modifier * p.buoyancy;
+        
+        p.mouseDistance = getDistance(state.pos.x - p.x,state.pos.y - p.y)
+        
+        if(p.mouseDistance < mouseGravityRange ){
+            p.velx += (mouseGravityRange - p.mouseDistance) * (state.pos.x - p.x) * modifier * mouseGravity;
+            p.vely += (mouseGravityRange - p.mouseDistance) * (state.pos.y - p.y) * modifier * mouseGravity;
         }
 
-        //opacity = (200-p.dist)/200;
+        //opacity = (200-p.mouseDistance)/200;
         opacity = Math.abs(p.createTime - time.now) / (decayEnd - decayStart);
+        r = 300 - p.mouseDistance
+        g = 100 + p.mouseDistance
 
         if(opacity > 1){
             opacity = 1;
@@ -120,8 +196,8 @@ var update = function (modifier) {
         }
 
         //change color if in mouse gravity
-        if(p.dist < mouseGravityRange){
-            p.color = "rgba(200,100,100,"+ opacity +")";
+        if(p.mouseDistance < mouseGravityRange){
+            p.color = "rgba("+ r +","+ g +",100,"+ opacity +")";
         }else{
             p.color = "rgba(200,200,100,"+ opacity +")";
         }
@@ -136,7 +212,7 @@ var update = function (modifier) {
         p.y += p.vely * modifier;
 
         //destroy particles off the edge
-        if(p.y < 0 || p.x < 0 || p.x > canvas.width || p.y > canvas.height){
+        if(p.y < -canvas.height || p.x < -canvas.width || p.x > 2 * canvas.width || p.y > 2 * canvas.height){
             p.destroy = true;
         }
 

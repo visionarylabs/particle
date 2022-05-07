@@ -23,7 +23,7 @@
         <?php /* 
             simple way to load js at the end of the body 
         */ ?>
-        <script src="game.js"></script>
+        <script src="game.js?t="<?php print mktime(); ?>></script>
 
     </body>
 </html>
