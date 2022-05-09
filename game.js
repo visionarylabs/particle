@@ -29,26 +29,9 @@ var config = {
     particleDirection : 0,
     particleRange : 360,
     airWeight : 1,
+    waterWeight : 4,
     mouseGravityRange : 100,
     mouseGravity : .5,
-    emiterDefault : {
-        x : 0,
-        y : 0,
-        velx : 20,
-        vely : 20,
-        rateOfParticles : 10,
-        lastParticle : 0,
-        createTime : 0,
-        destroy : false,
-    },
-    particleDefault : {
-        r : 200,
-        g : 100,
-        b : 200,
-        opacity : .5,
-        decayStart : 10 * 1000, //s * ms
-        decayEnd : 600 * 1000, //s * ms
-    }
 }
 
 var sprites = {
@@ -57,7 +40,10 @@ var sprites = {
 };
 
 var state = {
-    mousePos : {},
+    mousePos : {
+        x : 0,
+        y : 0,
+    },
     lowestFps : 1000,
 }
 
@@ -73,8 +59,12 @@ var init = function(){
     });
 
     tools = new toolsObject();
-    sprites.emiters.push(makeEmiter(1,canvas.width/2,canvas.height/2));
-    sprites.emiters.push(makeEmiter(2,canvas.width/4,canvas.height/4));
+
+    //MAKE EMITERS
+    //sprites.emiters.push(makeEmiter(1,canvas.width/3,canvas.height/3));
+    //sprites.emiters.push(makeEmiter(2,canvas.width/4,canvas.height/4));
+    sprites.emiters.push(makeEmiter(3,canvas.width/2,canvas.height/2));
+    //sprites.emiters.push(makeEmiter(4,0,0));
 
     mainLoop();
 };
@@ -87,27 +77,25 @@ var makeEmiter = function(type,x,y){
     var particleConfig = {};
 
     emiterConfig = {
-        x : 0,
-        y : 0,
-        velx : 20,
-        vely : 20,
+        x : x,
+        y : y,
+        velx : 100,
+        vely : -100,
         rateOfParticles : 10,
         lastParticle : 0,
-        createTime : 0,
+        createTime : time.now,
         destroy : false,
     },
+
     particleConfig = {
         r : 200,
         g : 100,
         b : 200,
         opacity : .5,
-        decayStart : 10 * 1000, //s * ms
-        decayEnd : 600 * 1000, //s * ms
+        decayStart : 1 * 1000, //s * ms
+        decayEnd : 5 * 1000, //s * ms
+        thirdDimension : false,
     }
-
-    emiterConfig.x = x;
-    emiterConfig.y = y;
-    emiterConfig.createTime = time.now;
 
     if(type == 2){
         emiterConfig.vely = -250;
@@ -116,9 +104,34 @@ var makeEmiter = function(type,x,y){
         particleConfig.r = 0;
     }
 
+    if(type == 3){
+        emiterConfig.vely = 0;
+        emiterConfig.velx = 0;
+        particleConfig.decayStart = 10 * 1000;
+        particleConfig.decayEnd = 20 * 1000;
+        emiterConfig.rateOfParticles = 20;
+        particleConfig.r = 200;
+        particleConfig.g = 200;
+        particleConfig.b = 100;
+        particleConfig.thirdDimension = true;
+    }
+
+    if(type == 4){
+        emiterConfig.vely = 0;
+        emiterConfig.x = state.mousePos.x;
+        emiterConfig.velx = 0;
+        emiterConfig.y = state.mousePos.y;
+        particleConfig.decayStart = 25;
+        particleConfig.decayEnd = 30;
+        emiterConfig.rateOfParticles = 25;
+        particleConfig.r = 200;
+        particleConfig.g = 200;
+        particleConfig.b = 100;
+    }
+
     var addParticle = function(){
         if( emiterConfig.lastParticle < time.now - (emiterConfig.rateOfParticles) ){
-            sprites.particles.push( makeParticle(type,emiterConfig.x,emiterConfig.y,particleConfig) );
+            sprites.particles.push( makeParticle(type,emiterConfig,particleConfig) );
             emiterConfig.lastParticle = time.now;
         }
     }
@@ -131,7 +144,7 @@ var makeEmiter = function(type,x,y){
 }
 
 
-var makeParticle = function(type,x,y,pconfig){
+var makeParticle = function(type,econfig,pconfig){
 
     var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
     var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
@@ -140,13 +153,14 @@ var makeParticle = function(type,x,y,pconfig){
 
     var particle = {
         type : type,
-        x : x,
-        y : y,
+        x : econfig.x,
+        y : econfig.y,
+        z : 1,
         weight : weight,
         buoyancy : (config.airWeight - weight),
         mouseDistance : null,
-        velx : Math.cos(Math.PI * direction / 180) * thisSpeed,
-        vely : Math.sin(Math.PI * direction / 180) * thisSpeed,
+        velx : Math.cos(Math.PI * direction / 180) * thisSpeed + econfig.velx,
+        vely : Math.sin(Math.PI * direction / 180) * thisSpeed + econfig.vely,
         width : size,
         height : size,
         color : "",
@@ -158,6 +172,7 @@ var makeParticle = function(type,x,y,pconfig){
         decayEnd : pconfig.decayEnd,
         createTime : time.now,
         destroy : false,
+        thirdDimention : pconfig.thirdDimension,
     }
 
     return particle;
@@ -181,12 +196,30 @@ var update = function (modifier) {
         e.emiterConfig.x += e.emiterConfig.velx * modifier;
         e.emiterConfig.y += e.emiterConfig.vely * modifier;
 
-        if(e.emiterConfig.x > canvas.width || e.emiterConfig.x < 0){
+        //bounce emiters off the edge
+        if(e.emiterConfig.x < 0){
+            e.emiterConfig.x = 1;
             e.emiterConfig.velx = e.emiterConfig.velx * -1;
         }
-        if(e.emiterConfig.y > canvas.height || e.emiterConfig.y < 0){
+        if(e.emiterConfig.x > canvas.width){
+            e.emiterConfig.x = canvas.width - 1;
+            e.emiterConfig.velx = e.emiterConfig.velx * -1;
+        }
+        
+        if(e.emiterConfig.y < 0){
+            e.emiterConfig.y = 1;
             e.emiterConfig.vely = e.emiterConfig.vely * -1;
         }
+        if(e.emiterConfig.y > canvas.height){
+            e.emiterConfig.y = canvas.height - 1;
+            e.emiterConfig.vely = e.emiterConfig.vely * -1;
+        }
+        if(e.type == 4){
+            e.emiterConfig.x = state.mousePos.x;
+            e.emiterConfig.y = state.mousePos.y;
+        }
+
+
 
     }
 
@@ -197,9 +230,28 @@ var update = function (modifier) {
     for(i = sprites.particles.length - 1; i >= 0; i--){
 
         p = sprites.particles[i];
+        
+        // BUOYANCY
+        if(p.y >= canvas.height - 200){
+            p.buoyancy = (config.waterWeight - p.weight);
+            //MORE DRAG
+            p.vely = p.vely * (1 - .3 * modifier);
+            p.velx = p.velx * (1 - .3 * modifier);
+        }else{
+            p.buoyancy = (config.airWeight - p.weight);
+        }
+        
+        // Z TEST
+        if(p.thirdDimension == true){
+            p.z += modifier;
+        }
 
         //GRAVITY / BOUYANCY
         p.vely -= config.gravity * modifier * p.buoyancy;
+        
+        //DRAG
+        p.vely = p.vely * (1 - .1 * modifier);
+        p.velx = p.velx * (1 - .1 * modifier);
 
         //MOUSE GRAVITY
         p.mouseDistance = tools.getDistance(state.mousePos.x - p.x,state.mousePos.y - p.y)
@@ -210,39 +262,31 @@ var update = function (modifier) {
         }
 
         //opacity = (200-p.mouseDistance)/200;
-        opacity = Math.abs(p.createTime - time.now) / (p.decayEnd - p.decayStart);
-        r = 300 - p.mouseDistance;
-        g = 100 + p.mouseDistance;
-        b = 100;
+        opacity = ( (p.decayEnd - p.decayStart) - (time.now - (p.createTime + p.decayStart) ) ) / (p.decayEnd - p.decayStart);
 
-        if(opacity > 1){
-            opacity = 1;
-        }else{
-            opacity = 1 - opacity;
-        }
+        if(opacity > 1) opacity = 1;
 
-        if(opacity <= .01){
-            opacity = 0;
+        if( time.now >= (p.createTime + p.decayEnd) ){
             p.destroy = true;
         }
 
         //COLOR
+        r = 300 - p.mouseDistance;
+        g = p.g + 100 - p.mouseDistance;
+        b = 100;
+
         p.color = "rgba("+ p.r +","+ p.g +","+p.b+","+ opacity +")";
+
         //change color if in mouse gravity
         if(p.mouseDistance < config.mouseGravityRange){
             p.color = "rgba("+ p.r +","+ g +","+ p.b +","+ opacity +")";
         }
 
-        //change color for slow particles
-        //if( ( Math.abs(p.velx) + Math.abs(p.vely) ) < 50){
-        //    p.color = "rgb(100,100,200)";
-        //}
-
         //position the particle
         p.x += p.velx * modifier;
         p.y += p.vely * modifier;
 
-        //destroy particles off the edge
+        //destroy particles too far off the edge
         if(p.y < -canvas.height || p.x < -canvas.width || p.x > 2 * canvas.width || p.y > 2 * canvas.height){
             p.destroy = true;
         }
@@ -252,7 +296,8 @@ var update = function (modifier) {
             sprites.particles.splice(i,1);
         }
 
-        if(Math.ceil(1000/time.delta) < state.lowestFps){
+        //set state
+        if(time.now > 3000 && Math.ceil(1000/time.delta) < state.lowestFps){
             state.lowestFps = Math.ceil(1000/time.delta);
         }
 
@@ -263,7 +308,7 @@ var update = function (modifier) {
 
 // Draw everything
 var render = function () {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
     showText();
     showSprites();
 };
@@ -278,9 +323,11 @@ var showSprites = function(){
         ctx.fillStyle = p.color;
         //ctx.fillRect(p.x, p.y, p.width, p.height);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.width, 0, 2 * Math.PI,false);
+        ctx.arc((p.x - (canvas.width / 2)) / p.z + (canvas.width / 2), (p.y - (canvas.height / 2)) / p.z + (canvas.height / 2), p.width, 0, 2 * Math.PI,false);
         ctx.fill();
     }
+    ctx.fillStyle = "rgba(50,100,200,.7)";
+    ctx.fillRect(0,canvas.height - 200,canvas.width,200)
 };
 
 // game ui
@@ -294,10 +341,12 @@ var showText = function(){
 
     //Info
     ctx.fillText('fps: ' + Math.ceil(1000/time.delta), 10, 56);
-    ctx.fillText('lowest fps: ' + state.lowestFps, 10, 76);
+    if(state.lowestFps < 1000){
+        ctx.fillText('lowest fps: ' + state.lowestFps, 10, 76);
+    }
     ctx.fillText('particles: ' + Math.ceil(sprites.particles.length), 10, 96);
+    ctx.fillText('time: ' + Math.ceil(time.current), 10, 116);
     //ctx.fillText('pps: ' + Math.ceil(1000/config.rateOfParticles), 10, 116);
-    ctx.fillText('s: ' + Math.ceil(time.current), 10, 136);
 };
 
 var processTick = function (time) {
