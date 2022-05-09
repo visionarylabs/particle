@@ -16,12 +16,12 @@
 * multiple emitters
 
 ## Pending Features
-* full screen / mobile / scale factor
-* click to make emitter
-* color / rainbow
-* wind
-* fields
-* set number of particles / emitter life time
-* UI
-* * decay time
-* * water on/off / level
+- full screen / mobile / scale factor
+- click to make emitter
+- color / rainbow
+- wind
+- fields
+- set number of particles / emitter life time
+- UI
+  - decay time
+  - water on/off / level
