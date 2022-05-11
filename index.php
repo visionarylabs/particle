@@ -1,7 +1,8 @@
 <?php /* 
     Particle System Test
 */ ?>
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
         <title>Particle System | HTML5 | JavaScript</title>
         <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1, user-scalable=0" />
@@ -15,6 +16,17 @@
         <div id="game-area" class="game-area">
             <canvas id="game-canvas" class="game-canvas"></canvas>
         </div>
+
+
+        <div id="game-interface" class="game-interface">
+            <form id="form-config" class="form-config" action="#">
+                <ul>
+                    <li class="p-flow"><label for="flow">flow</label> <input name="flow" type="number" value="10" /></li>
+                </ul>
+            </form>
+        </div>
+
+
         <div id="game-info" class="game-info">
             <h1>Particle System</h1>
             <p>Design and development by Ben Borkowski & Lengley Rowland</p>
@@ -23,7 +35,7 @@
         <?php /* 
             simple way to load js at the end of the body 
         */ ?>
-        <script src="game.js?t="<?php print mktime(); ?>></script>
+        <script src="game.js?t=<?php print mktime(); ?>"></script>
 
     </body>
 </html>
