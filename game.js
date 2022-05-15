@@ -25,16 +25,18 @@ var init = function(){
     });
 
     tools = new toolsObject();
-    ui = new interfaceObject();
-    ui.bindUi();
-    //MAKE EMITERS
 
+    //MAKE EMITERS
     sprites.emiters.push( makeEmiter( 1, canvas.width / 2, canvas.height / 2 ) );
     //sprites.emiters.push( makeEmiter( 2, canvas.width / 4, canvas.height / 4 ) );
     //sprites.emiters.push( makeEmiter( 3, canvas.width / 2, canvas.height / 2 ) );
     //sprites.emiters.push( makeEmiter( 4, canvas.width / 2, canvas.height / 2 ) );
 
-    mainLoop();
+    //make and bind UI (after emiters are made)
+    ui = new interfaceObject();
+    ui.bindUi();
+
+    mainLoop(time.now);
 };
 
 // game timing vars
@@ -60,10 +62,10 @@ var config = {
     mouseGravityRange : 100, // 50 to 200
     mouseGravity : .5,
 
-    maxParticles : 1500, // 100 to 2,000
+    maxParticles : 2500, // 100 to 2,000
 
     speedVar : 10, // 1 to 100 // tricle to burst // multiply the particle velocity
-    particleFlow : 2, // 1 to 100 cretae n particles per tick
+    particleFlow : 1, // 1 to 100 cretae n particles per tick
     rateOfParticles : 10, // 0 to 1000 // wait n miliseconds per tick // 1000 = 1 per s
 
     particleRange : 360,
@@ -405,12 +407,7 @@ var processTick = function (time) {
 // The main game loop
 var mainLoop = function (timestamp) {
 
-    if(!timestamp){
-        time.now = performance.now(); //in miliseconds
-    }else{
-        time.now = timestamp;
-    }
-
+    time.now = timestamp;
     time.delta = time.now - time.then;
     time.modifier = time.delta / 1000 * config.gameSpeed; //modifier in seconds
     time.current = Math.floor( (time.then - time.start) / 1000 );
@@ -448,25 +445,30 @@ var toolsObject = function(){
 
 var interfaceObject = function(){
 
-    var changeValue = function(e){
-        var value = e.target.value;
-        sprites.emiters[0].emiterConfig.particleFlow = value;
+    var changeValue = function(param,value){
+        sprites.emiters[0].emiterConfig[param] = value;
     }
 
     var bindUi = function(){
 
         //form
-        var formConfig = document.getElementById("form-config");
-        formConfig.addEventListener("submit", function(e){
+        var formConfigElem = document.getElementById("form-config");
+        formConfigElem.addEventListener("submit", function(e){
           e.preventDefault();
         });
 
-        //elem
-        var uiElem = document.getElementById("game-interface");
-        var line = document.getElementsByClassName("p-flow");
-        var input = uiElem.getElementsByTagName("input")[0];
-        input.addEventListener('change', changeValue);
-        
+        formConfigElem.addEventListener("change", function(e){
+          e.preventDefault();
+          changeValue(e.target.dataset.param, e.target.value);
+        });
+
+        var inputs = formConfigElem.getElementsByTagName('input');
+        var inputArray = Array.from(inputs);
+        inputArray.forEach(function(elem,i){
+            elem.value = sprites.emiters[0].emiterConfig[elem.dataset.param];
+        })
+
+
     }
     return {
         bindUi : bindUi

@@ -21,7 +21,21 @@
         <div id="game-interface" class="game-interface">
             <form id="form-config" class="form-config" action="#">
                 <ul>
-                    <li class="p-flow"><label for="flow">flow</label> <input name="flow" type="number" value="10" /></li>
+                    <li class="p-flow">
+                        <label for="flow">flow</label>
+                        <!-- <input name="flow" type="number" value="1" data-param="particleFlow" /> -->
+                        <input type="range" name="flow" min="1" max="100" value="1" data-param="particleFlow" />
+                    </li>
+                    <li class="p-rate">
+                        <label for="rate">rate</label>
+                        <!-- <input name="rate" type="number" value="1" data-param="rateOfParticles" /> -->
+                        <input type="range" name="rate" min="1" max="1000" value="1" data-param="rateOfParticles" />
+                    </li>
+                    <li class="p-speed">
+                        <label for="speed">speed</label>
+                        <!-- <input name="speed" type="number" value="1" data-param="speedVar" /> -->
+                        <input type="range" name="speed" min="1" max="100" value="1" data-param="speedVar" />
+                    </li>
                 </ul>
             </form>
         </div>
