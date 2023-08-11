@@ -375,6 +375,7 @@ var showSprites = function(){
         ctx.arc((p.x - (canvas.width / 2)) / p.z + (canvas.width / 2), (p.y - (canvas.height / 2)) / p.z + (canvas.height / 2), p.width, 0, 2 * Math.PI,false);
         ctx.fill();
     }
+    //draw water
     ctx.fillStyle = "rgba(50,100,200,.7)";
     ctx.fillRect(0,canvas.height - config.waterHeight,canvas.width,config.waterHeight)
 };

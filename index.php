@@ -1,4 +1,4 @@
-<?php /* 
+<?php /*
     Particle System Test
 */ ?>
 <!DOCTYPE html>
@@ -8,7 +8,7 @@
         <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        
+
         <link rel="stylesheet" type="text/css" href="game.css" media="all" />
         <link href="favicon.ico" rel="shortcut  icon">
     </head>
@@ -46,10 +46,10 @@
             <p>Design and development by Ben Borkowski & Lengley Rowland</p>
         </div>
         <?php include_once('../../lib/includes/opalgames-footer.php'); ?>
-        <?php /* 
-            simple way to load js at the end of the body 
+        <?php /*
+            simple way to load js at the end of the body
         */ ?>
-        <script src="game.js?t=<?php print mktime(); ?>"></script>
+        <script src="game.js?t=<?php print time(); ?>"></script>
 
     </body>
 </html>
