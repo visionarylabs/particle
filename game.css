@@ -76,6 +76,37 @@ h1,h2,h3,h4,h5{
     max-width: 800px;
 }
 
+.game-interface{
+    background: none;
+    color: #fff;
+    height: auto;
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    margin: 20px auto;;
+    padding: 10px 50px;
+    background: #222;
+    max-width: 800px;
+}
+
+.form-config{
+    text-align: right;
+}
+
+.form-config ul,
+.form-config ul li{
+    list-style: none;
+}
+.form-config input{
+    padding: 2px 0 2px 2px;
+    width: 50px;
+    border: 2px solid #000;
+    font-size: 15px;
+    line-height: 30px;
+    height: 30px;
+    text-align: center;
+}
+
 /**
     RESPONSIVE
 **/

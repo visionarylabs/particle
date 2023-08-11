@@ -1,15 +1,43 @@
 /**
     Particle System
 **/
-
+'use strict'
 // main game setup vars
 var canvas = document.getElementById('game-canvas');
 var ctx = canvas.getContext("2d");
-var w = window;
+
 // Cross-browser support for requestAnimationFrame
-var requestAnimationFrame = w.requestAnimationFrame || w.webkitRequestAnimationFrame || w.msRequestAnimationFrame || w.mozRequestAnimationFrame;
+var requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame || window.mozRequestAnimationFrame;
 
 var tools = {};
+var ui = {};
+
+//start the sim
+//called at the end of this file
+var init = function(){
+
+    canvas.width = 800;
+    canvas.height = 600;
+    canvas.id = 'game-canvas';
+    canvas.onselectstart = function () { return false; } //stop text select on double click
+    canvas.addEventListener('mousemove', function(e) {
+        state.mousePos = tools.getMousePos(canvas,e);
+    });
+
+    tools = new toolsObject();
+
+    //MAKE EMITERS
+    sprites.emiters.push( makeEmiter( 1, canvas.width / 2, canvas.height / 2 ) );
+    //sprites.emiters.push( makeEmiter( 2, canvas.width / 4, canvas.height / 4 ) );
+    //sprites.emiters.push( makeEmiter( 3, canvas.width / 2, canvas.height / 2 ) );
+    //sprites.emiters.push( makeEmiter( 4, canvas.width / 2, canvas.height / 2 ) );
+
+    //make and bind UI (after emiters are made)
+    ui = new interfaceObject();
+    ui.bindUi();
+
+    mainLoop(time.now);
+};
 
 // game timing vars
 var time = {
@@ -23,15 +51,26 @@ var time = {
 
 // game environment vars
 var config = {
-    gameSpeed : 1, //multipy the delta
-    speedVar : 50, //multipy the particle velocity
-    gravity : 96,
-    particleDirection : 0,
-    particleRange : 360,
-    airWeight : 1,
-    waterWeight : 4,
-    mouseGravityRange : 100,
+
+    gameSpeed : 1, // 1 to 10 multiply the delta
+    gravity : 96, // ?
+
+    airWeight : 1, // ?
+    waterWeight : 4, // ?
+    waterHeight : 100, // 0 to 200
+
+    mouseGravityRange : 100, // 50 to 200
     mouseGravity : .5,
+
+    maxParticles : 2500, // 100 to 2,000
+
+    speedVar : 10, // 1 to 100 // tricle to burst // multiply the particle velocity
+    particleFlow : 1, // 1 to 100 cretae n particles per tick
+    rateOfParticles : 10, // 0 to 1000 // wait n miliseconds per tick // 1000 = 1 per s
+
+    particleRange : 360,
+    particleDirection : 0,
+
 }
 
 var sprites = {
@@ -47,28 +86,6 @@ var state = {
     lowestFps : 1000,
 }
 
-//start the game
-var init = function(){
-
-    canvas.width = 800;
-    canvas.height = 600;
-    canvas.id = 'game-canvas';
-    canvas.onselectstart = function () { return false; } //stop text select on double click
-    canvas.addEventListener('mousemove', function(e) {
-        state.mousePos = tools.getMousePos(canvas,e);
-    });
-
-    tools = new toolsObject();
-
-    //MAKE EMITERS
-    //sprites.emiters.push(makeEmiter(1,canvas.width/3,canvas.height/3));
-    //sprites.emiters.push(makeEmiter(2,canvas.width/4,canvas.height/4));
-    sprites.emiters.push(makeEmiter(3,canvas.width/2,canvas.height/2));
-    //sprites.emiters.push(makeEmiter(4,0,0));
-
-    mainLoop();
-};
-
 var makeEmiter = function(type,x,y){
 
     var type = type;
@@ -79,9 +96,15 @@ var makeEmiter = function(type,x,y){
     emiterConfig = {
         x : x,
         y : y,
-        velx : 100,
-        vely : -100,
-        rateOfParticles : 10,
+        velx : 0,
+        vely : 0,
+
+        particleDirection : config.particleDirection,
+        particleRange : config.particleRange,
+        rateOfParticles : config.rateOfParticles,
+        particleFlow : config.particleFlow,
+        speedVar : config.speedVar,
+
         lastParticle : 0,
         createTime : time.now,
         destroy : false,
@@ -93,7 +116,7 @@ var makeEmiter = function(type,x,y){
         b : 200,
         opacity : .5,
         decayStart : 1 * 1000, //s * ms
-        decayEnd : 5 * 1000, //s * ms
+        decayEnd : 10 * 1000, //s * ms
         thirdDimension : false,
     }
 
@@ -104,12 +127,11 @@ var makeEmiter = function(type,x,y){
         particleConfig.r = 0;
     }
 
+    //center Emiter
     if(type == 3){
-        emiterConfig.vely = 0;
-        emiterConfig.velx = 0;
         particleConfig.decayStart = 10 * 1000;
         particleConfig.decayEnd = 20 * 1000;
-        emiterConfig.rateOfParticles = 20;
+        emiterConfig.rateOfParticles = 100;
         particleConfig.r = 200;
         particleConfig.g = 200;
         particleConfig.b = 100;
@@ -117,21 +139,34 @@ var makeEmiter = function(type,x,y){
     }
 
     if(type == 4){
-        emiterConfig.vely = 0;
+
         emiterConfig.x = state.mousePos.x;
-        emiterConfig.velx = 0;
         emiterConfig.y = state.mousePos.y;
-        particleConfig.decayStart = 25;
-        particleConfig.decayEnd = 30;
-        emiterConfig.rateOfParticles = 25;
-        particleConfig.r = 200;
-        particleConfig.g = 200;
-        particleConfig.b = 100;
+        emiterConfig.rateOfParticles = 20;
+        emiterConfig.particleFlow = 10;
+        emiterConfig.speedVar = 250;
+
+        particleConfig.decayStart = 0;
+        particleConfig.decayEnd = 1 * 1000;
+
     }
 
     var addParticle = function(){
-        if( emiterConfig.lastParticle < time.now - (emiterConfig.rateOfParticles) ){
-            sprites.particles.push( makeParticle(type,emiterConfig,particleConfig) );
+        var n = 0;
+        var makeN = emiterConfig.particleFlow;
+        
+        //if(sprites.particles.length + makeN > config.maxParticles){
+            //makeN = Math.floor( (config.maxParticles - sprites.particles.length) * Math.random());
+            //makeN = tools.randomRange(0,makeN);
+        //}
+        
+        //check rate of particle
+        if( emiterConfig.lastParticle < (time.now - emiterConfig.rateOfParticles) ){
+    
+            for(n = 0; n < makeN; n++){
+                sprites.particles.push( makeParticle(type,emiterConfig,particleConfig) );
+            }
+
             emiterConfig.lastParticle = time.now;
         }
     }
@@ -146,8 +181,8 @@ var makeEmiter = function(type,x,y){
 
 var makeParticle = function(type,econfig,pconfig){
 
-    var thisSpeed = ( Math.random() * config.speedVar) + config.speedVar;
-    var direction = ( Math.random() - .5 ) * config.particleRange + config.particleDirection;
+    var thisSpeed = ( ( Math.random() * econfig.speedVar ) + econfig.speedVar ) * tools.randomRange(1,5);;
+    var direction = ( Math.random() - .5 ) * econfig.particleRange + econfig.particleDirection;
     var size = tools.randomRange(1,8);
     var weight = 2;
 
@@ -182,15 +217,20 @@ var makeParticle = function(type,econfig,pconfig){
 // Check inputs for how to update sprites
 var update = function (modifier) {
 
+    //console.log('M: ' + modifier);
+
     var i;
 
     //EMITER LOOP
     //each emiter tries to create a particle
     //update velocity of each emiter
     var e;
+
     for(i = sprites.emiters.length - 1; i >= 0; i--){
 
         e = sprites.emiters[i];
+
+        //add particles from each emiter
         e.addParticle();
 
         e.emiterConfig.x += e.emiterConfig.velx * modifier;
@@ -227,12 +267,19 @@ var update = function (modifier) {
     //update the velocity and position of each particle
     var p;
     var r,g,b,opacity;
+    var removeN = null;
+
+    if(sprites.particles.length > config.maxParticles){
+        removeN = sprites.particles.length - config.maxParticles;
+        if(removeN) sprites.particles.splice(0,removeN);
+    }
+
     for(i = sprites.particles.length - 1; i >= 0; i--){
 
         p = sprites.particles[i];
-        
+
         // BUOYANCY
-        if(p.y >= canvas.height - 200){
+        if(p.y >= canvas.height - config.waterHeight){
             p.buoyancy = (config.waterWeight - p.weight);
             //MORE DRAG
             p.vely = p.vely * (1 - .3 * modifier);
@@ -301,10 +348,11 @@ var update = function (modifier) {
             state.lowestFps = Math.ceil(1000/time.delta);
         }
 
-
     }
 
 };
+//END UPDATE LOOP
+
 
 // Draw everything
 var render = function () {
@@ -317,6 +365,7 @@ var render = function () {
 var showSprites = function(){
     //draw particles
     var p = null;
+    var i = 0;
     for(i=0;i<sprites.particles.length;i++){
         p = sprites.particles[i];
         //set color
@@ -326,8 +375,9 @@ var showSprites = function(){
         ctx.arc((p.x - (canvas.width / 2)) / p.z + (canvas.width / 2), (p.y - (canvas.height / 2)) / p.z + (canvas.height / 2), p.width, 0, 2 * Math.PI,false);
         ctx.fill();
     }
+    //draw water
     ctx.fillStyle = "rgba(50,100,200,.7)";
-    ctx.fillRect(0,canvas.height - 200,canvas.width,200)
+    ctx.fillRect(0,canvas.height - config.waterHeight,canvas.width,config.waterHeight)
 };
 
 // game ui
@@ -356,19 +406,20 @@ var processTick = function (time) {
 }
 
 // The main game loop
-var mainLoop = function () {
-    time.now = performance.now(); //in miliseconds
+var mainLoop = function (timestamp) {
+
+    time.now = timestamp;
     time.delta = time.now - time.then;
-    time.modifier = time.delta / 1000; //modifier in seconds
-    time.modifier = time.modifier * config.gameSpeed;
+    time.modifier = time.delta / 1000 * config.gameSpeed; //modifier in seconds
     time.current = Math.floor( (time.then - time.start) / 1000 );
+
     update(time.modifier);
     render();
 
     time.then = time.now;
 
-    // Request to do this again ASAP
     requestAnimationFrame(mainLoop);
+
 };
 
 var toolsObject = function(){
@@ -393,5 +444,37 @@ var toolsObject = function(){
     }
 }
 
-// Let's play this game!
+var interfaceObject = function(){
+
+    var changeValue = function(param,value){
+        sprites.emiters[0].emiterConfig[param] = value;
+    }
+
+    var bindUi = function(){
+
+        //form
+        var formConfigElem = document.getElementById("form-config");
+        formConfigElem.addEventListener("submit", function(e){
+          e.preventDefault();
+        });
+
+        formConfigElem.addEventListener("change", function(e){
+          e.preventDefault();
+          changeValue(e.target.dataset.param, e.target.value);
+        });
+
+        var inputs = formConfigElem.getElementsByTagName('input');
+        var inputArray = Array.from(inputs);
+        inputArray.forEach(function(elem,i){
+            elem.value = sprites.emiters[0].emiterConfig[elem.dataset.param];
+        })
+
+
+    }
+    return {
+        bindUi : bindUi
+    }
+}
+
+// Start the Simulation
 init();

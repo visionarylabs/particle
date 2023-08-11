@@ -1,9 +1,9 @@
 # Particle System
 ## a particle system in javascript
 
-- https://opalgames.com/games/particle
-- project lead / lead physics  : Lengley Rowland
-- lead developer / designer : Ben Borkowski
+https://opalgames.com/games/particle
+project lead / lead physics : Lengley Rowland
+lead developer / designer : Ben Borkowski
 
 ## Features
 * particle emiter
